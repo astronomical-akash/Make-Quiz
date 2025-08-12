@@ -1,6 +1,6 @@
 # CGL Science Quiz – Static Site
 
-This is a pure HTML/CSS/JS app that loads a question bank from CSV.
+This is a pure HTML/CSS/JS app that loads a question bank from CSV. You can also author questions in‑browser and export them as a CSV file.
 
 ## Quick Deploy
 
@@ -21,6 +21,10 @@ Optional: for a custom domain, add it in Pages settings and create a CNAME DNS r
 1. Push the folder to GitHub/GitLab/Bitbucket.
 2. Import into Vercel → Framework Preset: **Other** → Root Directory: `/`.
 3. Deploy. Configure your domain in Vercel.
+
+## Create CSV authoring
+
+Click **Create CSV** in the header to open the authoring modal. Fill in the fields for each question type, add them to the list, then export the collection as a CSV. Questions are saved in your browser's local storage so you can come back later.
 
 ## Files
 - `index.html` – the entire app (Tailwind CDN + Papa Parse CDN).
