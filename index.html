@@ -36,6 +36,7 @@
           <a id="btnTemplateXlsx" href="./samples/CGL_Quiz_Template.xlsx" download class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Excel Template</a>
           <a id="btnSampleXlsx" href="./samples/CGL_Quiz_Sample.xlsx" download class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Excel Sample</a>
           <button id="btnPaste" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Paste CSV Text</button>
+          <button id="btnCreateCSV" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Create CSV</button>
           <button id="btnExportJSON" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Export Current as JSON</button>
           <button id="btnReset" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Reset Score</button>
           <button id="btnTest" class="px-4 py-2 rounded-xl bg-white border border-indigo-200 font-semibold shadow hover:bg-slate-50">Run Self‑Test</button>
@@ -90,6 +91,94 @@
     </div>
   </div>
 
+  <!-- Authoring Modal -->
+  <div id="authorOverlay" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
+    <div class="absolute inset-0 bg-black/40"></div>
+    <div class="relative mx-auto max-w-4xl mt-20 bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+      <h2 class="text-lg font-bold mb-4">Create Question Bank</h2>
+      <form id="authorForm" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-slate-700">Type</label>
+          <select id="authType" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm">
+            <option value="">Select type</option>
+            <option>One-Liner</option>
+            <option>Statement</option>
+            <option>Assertion/Reason</option>
+          </select>
+        </div>
+        <div id="fieldQuestion" class="sm:col-span-2">
+          <label class="block text-sm font-medium text-slate-700">Question</label>
+          <textarea id="authQuestion" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" rows="2"></textarea>
+        </div>
+        <div id="fieldStatements" class="sm:col-span-2 hidden">
+          <label class="block text-sm font-medium text-slate-700">Statements (semicolon separated)</label>
+          <textarea id="authStatements" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" rows="2"></textarea>
+        </div>
+        <div id="fieldAssertion" class="sm:col-span-2 hidden">
+          <label class="block text-sm font-medium text-slate-700">Assertion</label>
+          <textarea id="authAssertion" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" rows="2"></textarea>
+        </div>
+        <div id="fieldReason" class="sm:col-span-2 hidden">
+          <label class="block text-sm font-medium text-slate-700">Reason</label>
+          <textarea id="authReason" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" rows="2"></textarea>
+        </div>
+        <div id="fieldOptionA">
+          <label class="block text-sm font-medium text-slate-700">Option A</label>
+          <input id="authOptionA" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" />
+        </div>
+        <div id="fieldOptionB">
+          <label class="block text-sm font-medium text-slate-700">Option B</label>
+          <input id="authOptionB" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" />
+        </div>
+        <div id="fieldOptionC">
+          <label class="block text-sm font-medium text-slate-700">Option C</label>
+          <input id="authOptionC" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" />
+        </div>
+        <div id="fieldOptionD">
+          <label class="block text-sm font-medium text-slate-700">Option D</label>
+          <input id="authOptionD" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700">Answer (A-D)</label>
+          <input id="authAnswer" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-slate-700">Explanation (correct)</label>
+          <textarea id="authExCorrect" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" rows="2"></textarea>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-slate-700">Explanation (incorrect)</label>
+          <textarea id="authExIncorrect" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" rows="2"></textarea>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-slate-700">Subject</label>
+          <input id="authSubject" class="mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm" />
+        </div>
+        <div class="sm:col-span-2 flex justify-end mt-2">
+          <button id="btnAddQuestion" type="button" class="px-4 py-2 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700">Add Question</button>
+        </div>
+      </form>
+      <div class="mt-6 overflow-x-auto">
+        <table class="min-w-full text-sm border border-slate-200 rounded-lg">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="border px-2 py-1">#</th>
+              <th class="border px-2 py-1">Type</th>
+              <th class="border px-2 py-1">Question</th>
+              <th class="border px-2 py-1">Answer</th>
+              <th class="border px-2 py-1">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="authoredTableBody"></tbody>
+        </table>
+      </div>
+      <div class="mt-4 flex gap-2 justify-end">
+        <button id="btnAuthorCancel" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold hover:bg-slate-50">Close</button>
+        <button id="btnExportCSV" class="px-4 py-2 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700">Export CSV</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Header Doctor Modal -->
   <div id="headerOverlay" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
     <div class="absolute inset-0 bg-black/40"></div>
@@ -111,9 +200,15 @@
 
   <script>
     // ------- State -------
-    let score = 0;
-    let questions = [];
-    const colors = ['orange', 'amber', 'yellow', 'lime', 'red', 'rose', 'fuchsia'];
+      let score = 0;
+      let questions = [];
+      let authoredQuestions = [];
+      let editingIndex = -1;
+      const colors = ['orange', 'amber', 'yellow', 'lime', 'red', 'rose', 'fuchsia'];
+
+      try {
+        authoredQuestions = JSON.parse(localStorage.getItem('authoredQuestions') || '[]');
+      } catch (e) { authoredQuestions = []; }
 
     const elScore = document.getElementById('score');
     const elTotal = document.getElementById('total-questions');
@@ -468,14 +563,116 @@
     const btnUpload = document.getElementById('btnUpload');
     const btnReset = document.getElementById('btnReset');
     const btnExportJSON = document.getElementById('btnExportJSON');
-    const btnPaste = document.getElementById('btnPaste');
-    const pasteOverlay = document.getElementById('pasteOverlay');
-    const pasteArea = document.getElementById('pasteArea');
-    const btnPasteLoad = document.getElementById('btnPasteLoad');
-    const btnPasteCancel = document.getElementById('btnPasteCancel');
-    const btnTest = document.getElementById('btnTest');
+      const btnPaste = document.getElementById('btnPaste');
+      const pasteOverlay = document.getElementById('pasteOverlay');
+      const pasteArea = document.getElementById('pasteArea');
+      const btnPasteLoad = document.getElementById('btnPasteLoad');
+      const btnPasteCancel = document.getElementById('btnPasteCancel');
+      const btnTest = document.getElementById('btnTest');
+      const btnCreateCSV = document.getElementById('btnCreateCSV');
+      const authorOverlay = document.getElementById('authorOverlay');
+      const btnAuthorCancel = document.getElementById('btnAuthorCancel');
+      const btnExportCSV = document.getElementById('btnExportCSV');
+      const btnAddQuestion = document.getElementById('btnAddQuestion');
+      const authorForm = document.getElementById('authorForm');
+      const authoredTableBody = document.getElementById('authoredTableBody');
+      const authType = document.getElementById('authType');
+      const fieldQuestion = document.getElementById('fieldQuestion');
+      const fieldStatements = document.getElementById('fieldStatements');
+      const fieldAssertion = document.getElementById('fieldAssertion');
+      const fieldReason = document.getElementById('fieldReason');
+      const fieldOptionA = document.getElementById('fieldOptionA');
+      const fieldOptionB = document.getElementById('fieldOptionB');
+      const fieldOptionC = document.getElementById('fieldOptionC');
+      const fieldOptionD = document.getElementById('fieldOptionD');
+      const authQuestion = document.getElementById('authQuestion');
+      const authStatements = document.getElementById('authStatements');
+      const authAssertion = document.getElementById('authAssertion');
+      const authReason = document.getElementById('authReason');
+      const authOptionA = document.getElementById('authOptionA');
+      const authOptionB = document.getElementById('authOptionB');
+      const authOptionC = document.getElementById('authOptionC');
+      const authOptionD = document.getElementById('authOptionD');
+      const authAnswer = document.getElementById('authAnswer');
+      const authExCorrect = document.getElementById('authExCorrect');
+      const authExIncorrect = document.getElementById('authExIncorrect');
+      const authSubject = document.getElementById('authSubject');
 
-    btnUpload.addEventListener('click', () => fileInput.click());
+      function updateAuthoringFields() {
+        const type = authType.value;
+        const showOptions = type === 'One-Liner' || type === 'Statement';
+        fieldQuestion.classList.toggle('hidden', type === 'Assertion/Reason');
+        fieldStatements.classList.toggle('hidden', type !== 'Statement');
+        fieldAssertion.classList.toggle('hidden', type !== 'Assertion/Reason');
+        fieldReason.classList.toggle('hidden', type !== 'Assertion/Reason');
+        [fieldOptionA, fieldOptionB, fieldOptionC, fieldOptionD].forEach(el => el.classList.toggle('hidden', !showOptions));
+      }
+
+      function resetAuthorForm() {
+        authorForm.reset();
+        editingIndex = -1;
+        btnAddQuestion.textContent = 'Add Question';
+        updateAuthoringFields();
+      }
+
+      function populateForm(q) {
+        authType.value = q.type;
+        authQuestion.value = q.question;
+        authStatements.value = q.statements;
+        authAssertion.value = q.assertion;
+        authReason.value = q.reason;
+        authOptionA.value = q.option_a;
+        authOptionB.value = q.option_b;
+        authOptionC.value = q.option_c;
+        authOptionD.value = q.option_d;
+        authAnswer.value = q.answer;
+        authExCorrect.value = q.explanation_correct;
+        authExIncorrect.value = q.explanation_incorrect;
+        authSubject.value = q.subject;
+        updateAuthoringFields();
+      }
+
+      function renderAuthoredList() {
+        authoredTableBody.innerHTML = '';
+        authoredQuestions.forEach((q, idx) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="border px-2 py-1">${idx + 1}</td><td class="border px-2 py-1">${esc(q.type)}</td><td class="border px-2 py-1">${esc(q.question || q.assertion)}</td><td class="border px-2 py-1">${esc(q.answer)}</td><td class="border px-2 py-1"><button data-edit="${idx}" class="text-indigo-600 hover:underline">Edit</button> <button data-del="${idx}" class="text-red-600 hover:underline ml-2">Delete</button></td>`;
+          authoredTableBody.appendChild(tr);
+        });
+      }
+
+      function saveAuthored() {
+        try { localStorage.setItem('authoredQuestions', JSON.stringify(authoredQuestions)); } catch (e) {}
+      }
+
+      function validateAuthored(obj) {
+        const t = obj.type;
+        if (!t) return 'Type is required';
+        if (t === 'One-Liner') {
+          if (!obj.question) return 'Question required';
+          if (!obj.option_a || !obj.option_b || !obj.option_c || !obj.option_d) return 'All options required';
+          if (!obj.answer) return 'Answer required';
+          obj.statements = ''; obj.assertion=''; obj.reason='';
+        } else if (t === 'Statement') {
+          if (!obj.question) return 'Question required';
+          if (!obj.statements) return 'Statements required';
+          if (!obj.option_a || !obj.option_b || !obj.option_c || !obj.option_d) return 'All options required';
+          if (!obj.answer) return 'Answer required';
+          obj.assertion=''; obj.reason='';
+        } else if (t === 'Assertion/Reason') {
+          if (!obj.assertion || !obj.reason) return 'Assertion and reason required';
+          if (!obj.answer) return 'Answer required';
+          obj.question=''; obj.statements=''; obj.option_a=''; obj.option_b=''; obj.option_c=''; obj.option_d='';
+        } else {
+          return 'Unknown type';
+        }
+        return '';
+      }
+
+      authType.addEventListener('change', updateAuthoringFields);
+      updateAuthoringFields();
+
+      btnUpload.addEventListener('click', () => fileInput.click());
     btnReset.addEventListener('click', clearQuiz);
 
     btnPaste.addEventListener('click', () => {
@@ -499,9 +696,12 @@
     pasteArea.addEventListener('keydown', (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); btnPasteLoad.click(); }
     });
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !pasteOverlay.classList.contains('hidden')) { pasteOverlay.classList.add('hidden'); }
-    });
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (!pasteOverlay.classList.contains('hidden')) pasteOverlay.classList.add('hidden');
+          if (!authorOverlay.classList.contains('hidden')) authorOverlay.classList.add('hidden');
+        }
+      });
 
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files && e.target.files[0];
@@ -529,14 +729,75 @@
     });
 
     // Export JSON
-    btnExportJSON.addEventListener('click', () => {
-      if (!questions.length) { message('Nothing to export. Load a CSV first.', 'error'); return; }
-      const blob = new Blob([JSON.stringify(questions, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'science-quiz-questions.json'; a.click();
-      URL.revokeObjectURL(url);
-    });
+      btnExportJSON.addEventListener('click', () => {
+        if (!questions.length) { message('Nothing to export. Load a CSV first.', 'error'); return; }
+        const blob = new Blob([JSON.stringify(questions, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'science-quiz-questions.json'; a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      btnCreateCSV.addEventListener('click', () => {
+        authorOverlay.classList.remove('hidden');
+        renderAuthoredList();
+        resetAuthorForm();
+      });
+
+      btnAuthorCancel.addEventListener('click', () => { authorOverlay.classList.add('hidden'); resetAuthorForm(); });
+
+      btnAddQuestion.addEventListener('click', () => {
+        const obj = {
+          type: authType.value.trim(),
+          question: authQuestion.value.trim(),
+          statements: authStatements.value.trim(),
+          assertion: authAssertion.value.trim(),
+          reason: authReason.value.trim(),
+          option_a: authOptionA.value.trim(),
+          option_b: authOptionB.value.trim(),
+          option_c: authOptionC.value.trim(),
+          option_d: authOptionD.value.trim(),
+          answer: authAnswer.value.trim().toUpperCase(),
+          explanation_correct: authExCorrect.value.trim(),
+          explanation_incorrect: authExIncorrect.value.trim(),
+          subject: authSubject.value.trim()
+        };
+        const err = validateAuthored(obj);
+        if (err) { alert(err); return; }
+        if (editingIndex >= 0) {
+          authoredQuestions[editingIndex] = obj;
+          editingIndex = -1;
+        } else {
+          authoredQuestions.push(obj);
+        }
+        saveAuthored();
+        renderAuthoredList();
+        resetAuthorForm();
+      });
+
+      authoredTableBody.addEventListener('click', (e) => {
+        const editIdx = e.target.dataset.edit;
+        const delIdx = e.target.dataset.del;
+        if (editIdx != null) {
+          populateForm(authoredQuestions[editIdx]);
+          editingIndex = Number(editIdx);
+          btnAddQuestion.textContent = 'Update Question';
+        } else if (delIdx != null) {
+          authoredQuestions.splice(delIdx, 1);
+          saveAuthored();
+          renderAuthoredList();
+        }
+      });
+
+      btnExportCSV.addEventListener('click', () => {
+        if (!authoredQuestions.length) { alert('No questions to export.'); return; }
+        const csv = Papa.unparse(authoredQuestions, { columns: ['type','question','statements','assertion','reason','option_a','option_b','option_c','option_d','answer','explanation_correct','explanation_incorrect','subject'] });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'question-bank.csv'; a.click();
+        URL.revokeObjectURL(url);
+      });
 
     // Self-tests
     function runSelfTests() {
