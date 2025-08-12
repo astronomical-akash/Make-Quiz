@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CGL Science Quiz – CSV Question Bank</title>
+  <meta name="description" content="Interactive science quiz that loads questions from CSV or Excel-generated CSV. Supports One-Liner, Statement, and Assertion/Reason." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
+    .explanation-content { display: none; max-height: 0; overflow: hidden; transition: max-height 0.6s ease-in-out; }
+    .explanation-content.show { display: block; max-height: 1500px; }
+    .question-card { transition: transform 0.2s ease-in-out; }
+    .question-card:hover { transform: translateY(-4px); }
+    .option { transition: background-color 0.2s, border-color 0.2s; border-left-width: 4px; border-left-color: transparent; }
+    .correct { border-left-color: #22c55e !important; background-color: #f0fdf4 !important; }
+    .incorrect { border-left-color: #ef4444 !important; background-color: #fef2f2 !important; }
+    .answered .option { pointer-events: none; cursor: default; }
+  </style>
+</head>
+<body class="bg-slate-50 text-gray-800">
+  <header class="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-white/70 bg-white/90 border-b border-slate-200">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-orange-600">CGL Science Quiz – CSV Question Bank</h1>
+          <p class="text-sm text-gray-600">Upload or paste a CSV to generate the quiz. Supports <span class="font-medium">One-Liner</span>, <span class="font-medium">Statement</span>, and <span class="font-medium">Assertion/Reason</span>.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnUpload" class="px-4 py-2 rounded-xl bg-orange-600 text-white font-semibold shadow hover:bg-orange-700">Upload CSV</button>
+          <input id="fileInput" type="file" accept=".csv" class="hidden" />
+          <a id="btnSample" href="./samples/science-quiz-sample.csv" download class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Download Sample CSV</a>
+          <a id="btnTemplateXlsx" href="./samples/CGL_Quiz_Template.xlsx" download class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Excel Template</a>
+          <a id="btnSampleXlsx" href="./samples/CGL_Quiz_Sample.xlsx" download class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Excel Sample</a>
+          <button id="btnPaste" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Paste CSV Text</button>
+          <button id="btnExportJSON" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Export Current as JSON</button>
+          <button id="btnReset" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold shadow hover:bg-slate-50">Reset Score</button>
+          <button id="btnTest" class="px-4 py-2 rounded-xl bg-white border border-indigo-200 font-semibold shadow hover:bg-slate-50">Run Self‑Test</button>
+        </div>
+      </div>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <div class="text-lg font-bold bg-white px-4 py-2 rounded-xl shadow">Score: <span id="score" class="text-orange-600">0</span> / <span id="total-questions">0</span></div>
+        <div id="meta" class="text-sm text-gray-600"></div>
+      </div>
+    </div>
+  </header>
+
+  <section class="container mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+    <div class="bg-white rounded-2xl shadow p-5 border border-slate-200">
+      <details>
+        <summary class="cursor-pointer text-sm sm:text-base font-semibold">CSV schema & usage (click to expand)</summary>
+        <div class="mt-3 text-sm leading-relaxed text-slate-700 space-y-2">
+          <p>Required header row. Columns (case-insensitive):</p>
+          <ul class="list-disc ml-5">
+            <li><span class="font-semibold">type</span>: One-Liner | Statement | Assertion/Reason</li>
+            <li><span class="font-semibold">question</span>: For One-Liner & Statement (main stem)</li>
+            <li><span class="font-semibold">statements</span>: For Statement type only. Semicolon-separated list</li>
+            <li><span class="font-semibold">assertion</span>, <span class="font-semibold">reason</span>: For Assertion/Reason type</li>
+            <li><span class="font-semibold">option_a</span> ... <span class="font-semibold">option_d</span>: For One-Liner & Statement; leave blank for Assertion/Reason</li>
+            <li><span class="font-semibold">answer</span>: One of A, B, C, D</li>
+            <li><span class="font-semibold">explanation_correct</span>, <span class="font-semibold">explanation_incorrect</span>: Optional</li>
+            <li><span class="font-semibold">subject</span>: Optional tag (e.g., Physics/Chemistry/Biology)</li>
+          </ul>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="container mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+    <div id="dropZone" class="bg-orange-50/60 border-2 border-dashed border-orange-300 rounded-2xl p-6 text-center text-orange-700">
+      <p class="font-semibold">Drag & drop your CSV here</p>
+      <p class="text-sm">or use the <span class="font-medium">Upload CSV</span> button above</p>
+    </div>
+  </section>
+
+  <!-- Paste CSV Modal -->
+  <div id="pasteOverlay" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
+    <div class="absolute inset-0 bg-black/40"></div>
+    <div class="relative mx-auto max-w-3xl mt-20 bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+      <h2 class="text-lg font-bold mb-1">Paste CSV</h2>
+      <p class="text-sm text-slate-600 mb-3">Include the header row. Tip: from Excel use “Copy → Paste” or export CSV and paste here.</p>
+      <textarea id="pasteArea" class="w-full h-64 p-3 border border-slate-200 rounded-lg font-mono text-sm" placeholder="type,question,statements,assertion,reason,option_a,option_b,option_c,option_d,answer,explanation_correct,explanation_incorrect,subject&#10;One-Liner,The chemical name for baking soda is:,,,,Sodium Carbonate,Sodium Bicarbonate,Calcium Carbonate,Sodium Hydroxide,B,Explanation right,Explanation wrong,Chemistry"></textarea>
+      <div class="mt-4 flex gap-2 justify-end">
+        <button id="btnPasteCancel" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold hover:bg-slate-50">Cancel</button>
+        <button id="btnPasteLoad" class="px-4 py-2 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700">Load CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Doctor Modal -->
+  <div id="headerOverlay" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
+    <div class="absolute inset-0 bg-black/40"></div>
+    <div class="relative mx-auto max-w-3xl mt-20 bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+      <h2 class="text-lg font-bold mb-1">Fix CSV Headers</h2>
+      <p class="text-sm text-slate-600 mb-3">We couldn't find some required columns. Map your columns to the required ones below.</p>
+      <div id="headerProblems" class="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3 mb-3 hidden"></div>
+      <div id="headerMap" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+      <div class="mt-4 flex gap-2 justify-end">
+        <button id="btnHeaderCancel" class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold hover:bg-slate-50">Cancel</button>
+        <button id="btnHeaderApply" class="px-4 py-2 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700">Apply & Load</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div id="quiz-container"></div>
+  </main>
+
+  <script>
+    // ------- State -------
+    let score = 0;
+    let questions = [];
+    const colors = ['orange', 'amber', 'yellow', 'lime', 'red', 'rose', 'fuchsia'];
+
+    const elScore = document.getElementById('score');
+    const elTotal = document.getElementById('total-questions');
+    const quizContainer = document.getElementById('quiz-container');
+    const meta = document.getElementById('meta');
+
+    // ------- Helpers -------
+    const esc = (s) => (s == null ? '' : String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])));
+
+    function setScore(val) {
+      score = val;
+      elScore.textContent = score;
+    }
+    function setTotal(n) { elTotal.textContent = n; }
+    function message(text, type = 'info') {
+      const color = type === 'error' ? 'text-red-700 bg-red-50 border-red-200' : type === 'success' ? 'text-green-700 bg-green-50 border-green-200' : 'text-slate-700 bg-slate-50 border-slate-200';
+      meta.innerHTML = `<span class="px-3 py-1 rounded-lg border ${color}">${esc(text)}</span>`;
+    }
+
+    // Header alias map (case-insensitive)
+    const HEADER_ALIASES = {
+      'question type': 'type', 'qtype': 'type', 'ques_type': 'type', 'question_type': 'type', 'type*': 'type', '\ufefftype': 'type',
+      'option a': 'option_a', 'opt_a': 'option_a', 'a': 'option_a',
+      'option b': 'option_b', 'opt_b': 'option_b', 'b': 'option_b',
+      'option c': 'option_c', 'opt_c': 'option_c', 'c': 'option_c',
+      'option d': 'option_d', 'opt_d': 'option_d', 'd': 'option_d',
+      'correct_answer': 'answer', 'correct answer': 'answer', 'ans': 'answer',
+      'statement': 'statements', 'stmts': 'statements', 'stmt': 'statements', 'statements (semicolon separated)': 'statements'
+    };
+    const REQUIRED_HEADERS = ['type','answer'];
+    function normalizeKey(k){ return String(k || '').replace(/\uFEFF/g,'').trim().toLowerCase(); }
+    function applyHeaderAliasesToRows(rows){
+      rows.forEach(row => {
+        const keys = Object.keys(row);
+        keys.forEach(k => {
+          const nk = normalizeKey(k);
+          const target = HEADER_ALIASES[nk];
+          if (target && (row[target] == null || String(row[target]).trim() === '')) {
+            row[target] = row[k];
+          }
+        });
+      });
+      return rows;
+    }
+    function summarizeHeaders(rows){
+      const set = new Set();
+      rows.forEach(r => Object.keys(r).forEach(k => set.add(normalizeKey(k))));
+      return Array.from(set).sort();
+    }
+
+    // Repair: typical A/R misalignment (extra comma pushes answer -> explanation_correct)
+    function autoRepairARShift(rows){
+      let repaired = 0;
+      rows.forEach((r) => {
+        const typeVal = String(r.type || '').trim().toUpperCase();
+        const ans = String(r.answer || '').trim().toUpperCase();
+        const exCorr = String(r.explanation_correct || '').trim().toUpperCase();
+        const optionsEmpty = ['option_a','option_b','option_c','option_d'].every(k => (r[k] == null || String(r[k]).trim() === ''));
+        if (typeVal === 'ASSERTION/REASON' && (!ans || !['A','B','C','D'].includes(ans)) && ['A','B','C','D'].includes(exCorr) && optionsEmpty) {
+          r.answer = exCorr;
+          const newCorrect = r.explanation_incorrect || '';
+          const extra0 = Array.isArray(r.__parsed_extra) ? r.__parsed_extra[0] : '';
+          const newIncorrect = r.subject || extra0 || '';
+          const extra1 = Array.isArray(r.__parsed_extra) ? r.__parsed_extra[1] : '';
+          r.explanation_correct = newCorrect;
+          r.explanation_incorrect = newIncorrect;
+          r.subject = extra1 || '';
+          repaired++;
+        }
+      });
+      if (repaired) message(`Auto‑repaired ${repaired} row(s) with misaligned 'answer' (extra comma).`, 'success');
+      return repaired;
+    }
+
+    function preflightRepair(results){
+      applyHeaderAliasesToRows(results.data);
+      autoRepairARShift(results.data);
+
+      let missingType = 0, missingAnswer = 0;
+      results.data.forEach((r) => {
+        if (!String(r.type || '').trim()) missingType++;
+        if (!String(r.answer || '').trim()) missingAnswer++;
+      });
+
+      const manyMissing = (missingType > 0.3 * results.data.length) || (missingAnswer > 0.3 * results.data.length);
+      if (manyMissing) {
+        const headers = summarizeHeaders(results.data);
+        openHeaderDoctor(headers, results);
+        return false;
+      }
+      return true;
+    }
+
+    function openHeaderDoctor(headers, results){
+      const overlay = document.getElementById('headerOverlay');
+      const mapWrap = document.getElementById('headerMap');
+      const problems = document.getElementById('headerProblems');
+      const required = ['type','answer'];
+      const optional = ['question','statements','assertion','reason','option_a','option_b','option_c','option_d','explanation_correct','explanation_incorrect','subject'];
+
+      mapWrap.innerHTML = '';
+      function buildRow(label, key){
+        const wrap = document.createElement('div');
+        const lab = document.createElement('label');
+        lab.className = 'block text-sm font-medium text-slate-700';
+        lab.textContent = `${label}`;
+        const sel = document.createElement('select');
+        sel.className = 'mt-1 w-full border border-slate-300 rounded-lg p-2 text-sm';
+        sel.dataset.target = key;
+        const none = document.createElement('option'); none.value = ''; none.textContent = '— choose column —'; sel.appendChild(none);
+        headers.forEach(h => { const o = document.createElement('option'); o.value = h; o.textContent = h; sel.appendChild(o); });
+        wrap.appendChild(lab); wrap.appendChild(sel);
+        return wrap;
+      }
+      required.forEach(k => mapWrap.appendChild(buildRow(`${k} (required)`, k)));
+      optional.forEach(k => mapWrap.appendChild(buildRow(k, k)));
+
+      problems.classList.add('hidden');
+      overlay.classList.remove('hidden');
+
+      document.getElementById('btnHeaderCancel').onclick = () => overlay.classList.add('hidden');
+      document.getElementById('btnHeaderApply').onclick = () => {
+        const sels = mapWrap.querySelectorAll('select');
+        const mapping = {};
+        sels.forEach(sel => { if (sel.value) mapping[sel.value] = sel.dataset.target; });
+        results.data.forEach(row => {
+          Object.keys(row).forEach(k => {
+            const norm = normalizeKey(k);
+            const target = mapping[norm];
+            if (target) {
+              if (row[target] == null || String(row[target]).trim() === '') row[target] = row[k];
+            }
+          });
+        });
+        const miss = REQUIRED_HEADERS.filter(h => !results.data.some(r => String(r[h] || '').trim()));
+        if (miss.length) {
+          problems.textContent = `Still missing: ${miss.join(', ')}. Please map them before applying.`;
+          problems.classList.remove('hidden');
+          return;
+        }
+        overlay.classList.add('hidden');
+        ingestRows(results.data);
+      };
+    }
+
+    function validateRow(row, idx) {
+      const t = (row.type || '').trim();
+      const ans = (row.answer || '').trim().toUpperCase();
+      if (!t) return `Row ${idx}: missing 'type'`;
+      if (!['ONE-LINER','STATEMENT','ASSERTION/REASON'].includes(t.toUpperCase())) return `Row ${idx}: unknown type '${row.type}'`;
+      if (!ans || !['A','B','C','D'].includes(ans)) return `Row ${idx}: 'answer' must be A/B/C/D`;
+      if (t.toUpperCase() === 'ONE-LINER') {
+        if (!row.question) return `Row ${idx}: One-Liner requires 'question'`;
+        if (!row.option_a || !row.option_b || !row.option_c || !row.option_d) return `Row ${idx}: One-Liner requires option_a..option_d`;
+      }
+      if (t.toUpperCase() === 'STATEMENT') {
+        if (!row.question) return `Row ${idx}: Statement requires 'question'`;
+        if (!row.statements) return `Row ${idx}: Statement requires 'statements' (semicolon-separated)`;
+        if (!row.option_a || !row.option_b || !row.option_c || !row.option_d) return `Row ${idx}: Statement requires option_a..option_d`;
+      }
+      if (t.toUpperCase() === 'ASSERTION/REASON') {
+        if (!row.assertion || !row.reason) return `Row ${idx}: Assertion/Reason requires 'assertion' and 'reason'`;
+      }
+      return null;
+    }
+
+    function mapRowToQuestion(row) {
+      const type = (row.type || '').trim();
+      const base = {
+        type: type,
+        answer: (row.answer || '').trim().toUpperCase(),
+        explanation: {
+          correct: row.explanation_correct ? String(row.explanation_correct).trim() : '—',
+          incorrect: row.explanation_incorrect ? String(row.explanation_incorrect).trim() : '—'
+        },
+        subject: row.subject ? String(row.subject).trim() : ''
+      };
+      if (type.toUpperCase() === 'ONE-LINER') {
+        base.question = String(row.question).trim();
+        base.options = [row.option_a, row.option_b, row.option_c, row.option_d].map(v => String(v || '').trim());
+      } else if (type.toUpperCase() === 'STATEMENT') {
+        base.question = String(row.question).trim();
+        const raw = String(row.statements).split(';').map(s => s.trim()).filter(Boolean);
+        base.statements = raw;
+        base.options = [row.option_a, row.option_b, row.option_c, row.option_d].map(v => String(v || '').trim());
+      } else if (type.toUpperCase() === 'ASSERTION/REASON') {
+        base.assertion = String(row.assertion).trim();
+        base.reason = String(row.reason).trim();
+      }
+      return base;
+    }
+
+    function ingestRows(rows){
+      const errors = [];
+      rows.forEach((row, i) => {
+        const msg = validateRow(row, i + 2);
+        if (msg) errors.push(msg);
+      });
+      if (errors.length) {
+        message(`Found ${errors.length} issue(s). First: ${errors[0]}`, 'error');
+        console.error(errors.join('\n'));
+        return;
+      }
+      const mapped = rows.map(mapRowToQuestion);
+      renderQuiz(mapped);
+    }
+
+    function loadCsvFromResults(results){
+      if (results.errors?.length) {
+        const err = results.errors[0];
+        message(`CSV parse error (row ${err.row}): ${err.message}`, 'error');
+        return;
+      }
+      const ok = preflightRepair(results);
+      if (!ok) return;
+      ingestRows(results.data);
+    }
+
+    function clearQuiz() {
+      quizContainer.innerHTML = '';
+      setScore(0);
+      setTotal(0);
+      message('Quiz cleared. Upload or paste CSV to begin.');
+    }
+
+    function renderQuiz(list) {
+      questions = list;
+      setTotal(questions.length);
+      setScore(0);
+      quizContainer.innerHTML = '';
+      message(`Loaded ${questions.length} question(s). Good luck!`, 'success');
+
+      questions.forEach((q, index) => {
+        const questionNumber = index + 1;
+        const color = colors[index % colors.length];
+
+        const card = document.createElement('div');
+        card.className = `bg-white rounded-2xl shadow-lg p-6 mb-6 border-l-4 border-${color}-500 question-card`;
+        card.id = `q${questionNumber}`;
+
+        let titleHTML = '';
+        if (q.type && q.type.toUpperCase() === 'ASSERTION/REASON') {
+          titleHTML += `<p class="text-lg font-semibold mb-4"><span class="font-bold">Q${questionNumber}.</span> Consider the following statements:</p>`;
+        } else {
+          titleHTML += `<p class="text-lg font-semibold mb-4"><span class="font-bold">Q${questionNumber}.</span> ${esc(q.question || '')}</p>`;
+        }
+        card.insertAdjacentHTML('beforeend', titleHTML);
+
+        if (q.type && q.type.toUpperCase() === 'STATEMENT' && Array.isArray(q.statements)) {
+          const ol = document.createElement('ol');
+          ol.className = 'list-decimal list-inside space-y-2 mb-4 ml-4';
+          q.statements.forEach(stmt => {
+            const li = document.createElement('li');
+            li.innerHTML = esc(stmt);
+            ol.appendChild(li);
+          });
+          card.appendChild(ol);
+          const p = document.createElement('p');
+          p.className = 'mb-4';
+          p.textContent = 'Which of the statements given above are correct?';
+          card.appendChild(p);
+        }
+
+        if (q.type && q.type.toUpperCase() === 'ASSERTION/REASON') {
+          const ar = document.createElement('div');
+          ar.className = 'mb-4 ml-4';
+          ar.innerHTML = `
+            <p class=""><strong class="text-${color}-500">Assertion (A):</strong> ${esc(q.assertion)}</p>
+            <p class=""><strong class="text-${color}-500">Reason (R):</strong> ${esc(q.reason)}</p>
+          `;
+          card.appendChild(ar);
+          const p = document.createElement('p');
+          p.className = 'mb-4';
+          p.textContent = 'Select the correct answer from the code given below:';
+          card.appendChild(p);
+        }
+
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'space-y-2';
+        const labels = ['A','B','C','D'];
+
+        if (q.type && q.type.toUpperCase() === 'ASSERTION/REASON') {
+          const arOptions = [
+            'Both (A) and (R) are true, and (R) is the correct explanation of (A).',
+            'Both (A) and (R) are true, but (R) is not the correct explanation of (A).',
+            '(A) is true, but (R) is false.',
+            '(A) is false, but (R) is true.'
+          ];
+          arOptions.forEach((text, i) => {
+            const div = document.createElement('div');
+            div.className = 'option p-3 rounded-lg border border-gray-200 hover:bg-gray-100 cursor-pointer';
+            div.dataset.option = labels[i];
+            div.innerHTML = `<span class="font-bold">${labels[i]})</span> ${esc(text)}`;
+            div.addEventListener('click', () => selectAnswer(index, labels[i]));
+            optionsDiv.appendChild(div);
+          });
+        } else {
+          (q.options || []).forEach((text, i) => {
+            const div = document.createElement('div');
+            div.className = 'option p-3 rounded-lg border border-gray-200 hover:bg-gray-100 cursor-pointer';
+            div.dataset.option = labels[i];
+            div.innerHTML = `<span class="font-bold">${labels[i]})</span> ${esc(text)}`;
+            div.addEventListener('click', () => selectAnswer(index, labels[i]));
+            optionsDiv.appendChild(div);
+          });
+        }
+        card.appendChild(optionsDiv);
+
+        const exp = document.createElement('div');
+        exp.id = `explanation-${questionNumber}`;
+        exp.className = 'explanation-content mt-4 border-t border-gray-200 pt-4';
+        exp.innerHTML = `
+          <h3 class="font-bold text-lg mb-2 text-green-600">Correct Answer: ${esc(q.answer)}</h3>
+          <div class="space-y-3">
+            <div class="p-3 rounded-lg bg-green-50">
+              <p><span class="font-bold text-green-700">Explanation for Correct Option:</span> ${esc(q.explanation?.correct || '—')}</p>
+            </div>
+            <div class="p-3 rounded-lg bg-red-50">
+              <p><span class="font-bold text-red-700">Explanation for Incorrect Options:</span> ${esc(q.explanation?.incorrect || '—')}</p>
+            </div>
+          </div>
+        `;
+        card.appendChild(exp);
+
+        quizContainer.appendChild(card);
+      });
+    }
+
+    function selectAnswer(questionIndex, selectedOptionValue) {
+      const questionNumber = questionIndex + 1;
+      const questionCard = document.getElementById(`q${questionNumber}`);
+      if (!questionCard || questionCard.classList.contains('answered')) return;
+      questionCard.classList.add('answered');
+
+      const q = questions[questionIndex];
+      const correct = (q.answer || '').toUpperCase();
+      const options = questionCard.querySelectorAll('.option');
+
+      options.forEach(opt => {
+        const val = opt.dataset.option;
+        if (val === correct) opt.classList.add('correct');
+        if (val === selectedOptionValue && val !== correct) opt.classList.add('incorrect');
+      });
+
+      if (selectedOptionValue === correct) setScore(score + 1);
+      const exp = document.getElementById(`explanation-${questionNumber}`);
+      if (exp) exp.classList.add('show');
+    }
+
+    // ------- CSV Import / Export -------
+    const fileInput = document.getElementById('fileInput');
+    const btnUpload = document.getElementById('btnUpload');
+    const btnReset = document.getElementById('btnReset');
+    const btnExportJSON = document.getElementById('btnExportJSON');
+    const btnPaste = document.getElementById('btnPaste');
+    const pasteOverlay = document.getElementById('pasteOverlay');
+    const pasteArea = document.getElementById('pasteArea');
+    const btnPasteLoad = document.getElementById('btnPasteLoad');
+    const btnPasteCancel = document.getElementById('btnPasteCancel');
+    const btnTest = document.getElementById('btnTest');
+
+    btnUpload.addEventListener('click', () => fileInput.click());
+    btnReset.addEventListener('click', clearQuiz);
+
+    btnPaste.addEventListener('click', () => {
+      pasteOverlay.classList.remove('hidden');
+      setTimeout(() => pasteArea.focus(), 50);
+    });
+    btnPasteCancel.addEventListener('click', () => {
+      pasteOverlay.classList.add('hidden');
+    });
+    btnPasteLoad.addEventListener('click', () => {
+      const text = (pasteArea.value || '').trim();
+      if (!text) { message('Paste some CSV first.', 'error'); return; }
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (h) => h.replace(/\uFEFF/g,'').trim().toLowerCase(),
+        complete: (results) => { loadCsvFromResults(results); }
+      });
+      pasteOverlay.classList.add('hidden');
+    });
+    pasteArea.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); btnPasteLoad.click(); }
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !pasteOverlay.classList.contains('hidden')) { pasteOverlay.classList.add('hidden'); }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (h) => h.replace(/\uFEFF/g,'').trim().toLowerCase(),
+        complete: (results) => { loadCsvFromResults(results); }
+      });
+    });
+
+    const dropZone = document.getElementById('dropZone');
+    ['dragenter','dragover'].forEach(evt => dropZone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('ring-2','ring-orange-400'); }));
+    ['dragleave','drop'].forEach(evt => dropZone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('ring-2','ring-orange-400'); }));
+    dropZone.addEventListener('drop', (e) => {
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file && file.name.toLowerCase().endsWith('.csv')) {
+        fileInput.files = e.dataTransfer.files;
+        const changeEvent = new Event('change');
+        fileInput.dispatchEvent(changeEvent);
+      } else {
+        message('Please drop a .csv file.', 'error');
+      }
+    });
+
+    // Export JSON
+    btnExportJSON.addEventListener('click', () => {
+      if (!questions.length) { message('Nothing to export. Load a CSV first.', 'error'); return; }
+      const blob = new Blob([JSON.stringify(questions, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'science-quiz-questions.json'; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Self-tests
+    function runSelfTests() {
+      const tests = [];
+      const makeRow = (obj) => ({
+        type: '', question: '', statements: '', assertion: '', reason: '', option_a: '', option_b: '', option_c: '', option_d: '', answer: '', explanation_correct: '', explanation_incorrect: '', subject: '', ...obj
+      });
+      tests.push({ name: 'Valid One-Liner', row: makeRow({ type: 'One-Liner', question: 'Baking soda?', option_a:'Na2CO3', option_b:'NaHCO3', option_c:'CaCO3', option_d:'NaOH', answer:'B' }), expectError: false });
+      tests.push({ name: 'Valid Statement', row: makeRow({ type: 'Statement', question: 'Sound facts?', statements:'A;B;C;D', option_a:'2 only', option_b:'1 and 2 only', option_c:'2 and 3 only', option_d:'All of the above', answer:'A' }), expectError: false });
+      tests.push({ name: 'Valid Assertion/Reason', row: makeRow({ type: 'Assertion/Reason', assertion: 'RBCs are biconcave.', reason: 'Shape increases surface area.', answer:'A' }), expectError: false });
+      tests.push({ name: 'Invalid: missing type', row: makeRow({ question: 'Q?', option_a:'A', option_b:'B', option_c:'C', option_d:'D', answer:'A' }), expectError: true });
+      tests.push({ name: 'Invalid: missing answer', row: makeRow({ type: 'One-Liner', question: 'Q?', option_a:'A', option_b:'B', option_c:'C', option_d:'D' }), expectError: true });
+      tests.push({ name: 'Invalid: unknown type', row: makeRow({ type: 'TRICK', question: 'Q?', option_a:'A', option_b:'B', option_c:'C', option_d:'D', answer:'A' }), expectError: true });
+      const aliasRows = [{ 'question type':'One-Liner', question:'Alias works?', option_a:'A', option_b:'B', option_c:'C', option_d:'D', answer:'A' }];
+      applyHeaderAliasesToRows(aliasRows);
+      tests.push({ name: 'Header alias: question type -> type', row: aliasRows[0], expectError: false });
+      const misaligned = makeRow({ type:'Assertion/Reason', assertion:'X', reason:'Y', answer:'', explanation_correct:'A', explanation_incorrect:'The correct expl', subject:'The incorrect expl' });
+      const fakeResults = { data: [ misaligned ] };
+      preflightRepair(fakeResults);
+      const repaired = fakeResults.data[0];
+      const repairPassed = repaired.answer === 'A' && repaired.explanation_correct === 'The correct expl';
+      const resultsVR = tests.map((t, i) => {
+        const err = validateRow(t.row, i + 2);
+        const passed = (!!err) === t.expectError;
+        return { name: t.name, passed, err };
+      });
+      resultsVR.push({ name: 'Repair: A/R answer shift', passed: repairPassed, err: repairPassed ? null : 'Repair logic failed' });
+      const passedCount = resultsVR.filter(r => r.passed).length;
+      const failed = resultsVR.filter(r => !r.passed);
+      if (failed.length) {
+        message(`Self‑test: ${passedCount}/${resultsVR.length} passed. First failure: ${failed[0].name}${failed[0].err ? ' → ' + failed[0].err : ''}`, 'error');
+        console.warn('Self‑test details:', resultsVR);
+      } else {
+        message(`Self‑test: All ${resultsVR.length} tests passed.`, 'success');
+        console.info('Self‑test details:', resultsVR);
+      }
+    }
+    btnTest.addEventListener('click', runSelfTests);
+
+    // Kick off
+    clearQuiz();
+  </script>
+</body>
+</html>
